@@ -1,11 +1,11 @@
 /************* TabFmt C++ Program Source Code File (.CPP) **************/
 /* PROGRAM NAME: TABFMT                                                */
 /* -------------                                                       */
-/*  Version 3.9.2                                                      */
+/*  Version 3.9.3                                                      */
 /*                                                                     */
 /* COPYRIGHT:                                                          */
 /* ----------                                                          */
-/*  (C) Copyright to the author Olivier BERTRAND          2001 - 2017  */
+/*  (C) Copyright to the author Olivier BERTRAND          2001 - 2019  */
 /*                                                                     */
 /* WHAT THIS PROGRAM DOES:                                             */
 /* -----------------------                                             */
@@ -189,9 +189,11 @@ PQRYRES CSVColumns(PGLOBAL g, PCSZ dp, PTOS topt, bool info)
 		htrc("File %s Sep=%c Qot=%c Header=%d maxerr=%d\n",
 		SVP(tdp->Fn), tdp->Sep, tdp->Qot, tdp->Header, tdp->Maxerr);
 
+#if defined(ZIP_SUPPORT)
 	if (tdp->Zipped)
 		tcvp = new(g)TDBCSV(tdp, new(g)UNZFAM(tdp));
 	else
+#endif   // ZIP_SUPPORT
 		tcvp = new(g) TDBCSV(tdp, new(g) DOSFAM(tdp));
 
 	tcvp->SetMode(MODE_READ);
@@ -475,6 +477,7 @@ bool CSVDEF::DefineAM(PGLOBAL g, LPCSTR am, int poff)
   if (DOSDEF::DefineAM(g, "CSV", poff))
     return true;
 
+	Recfm = RECFM_CSV;
   GetCharCatInfo("Separator", ",", buf, sizeof(buf));
   Sep = (strlen(buf) == 2 && buf[0] == '\\' && buf[1] == 't') ? '\t' : *buf;
   Quoted = GetIntCatInfo("Quoted", -1);
@@ -1485,8 +1488,8 @@ void CSVCOL::ReadColumn(PGLOBAL g)
 /***********************************************************************/
 void CSVCOL::WriteColumn(PGLOBAL g)
   {
-  char   *p, buf[64];
-  int     flen;
+  char   *p;
+  int     n, flen;
   PTDBCSV tdbp = (PTDBCSV)To_Tdb;
 
   if (trace(2))
@@ -1508,13 +1511,14 @@ void CSVCOL::WriteColumn(PGLOBAL g)
   /*********************************************************************/
   /*  Get the string representation of the column value.               */
   /*********************************************************************/
-  p = Value->ShowValue(buf);
+  p = Value->GetCharString(Buf);
+	n = strlen(p);
 
   if (trace(2))
-    htrc("new length(%p)=%d\n", p, strlen(p));
+    htrc("new length(%p)=%d\n", p, n);
 
-  if ((signed)strlen(p) > flen) {
-    sprintf(g->Message, MSG(BAD_FLD_LENGTH), Name, p, flen,
+  if (n > flen) {
+    sprintf(g->Message, MSG(BAD_FLD_LENGTH), Name, p, n,
                         tdbp->RowNumber(g), tdbp->GetFile(g));
 		throw 34;
 	} else if (Dsp)
