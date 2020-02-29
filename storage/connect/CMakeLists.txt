@@ -44,7 +44,6 @@ add_definitions( -DHUGE_SUPPORT -DGZ_SUPPORT )
 # OS specific C flags, definitions and source files.
 #
 IF(UNIX)
-  MY_CHECK_AND_SET_COMPILER_FLAG("-Wall -Wmissing-declarations")
   if(NOT WITH_WARNINGS)
     add_definitions(-Wall -Wmissing-declarations)
     add_definitions(-Wno-write-strings)
