@@ -177,8 +177,8 @@ int JSONDISC::GetColumns(PGLOBAL g, PCSZ db, PCSZ dsn, PTOS topt)
   bool mgo = (GetTypeID(topt->type) == TAB_MONGO);
   PCSZ level = GetStringTableOption(g, topt, "Level", NULL);
 
-  if (level) {
-    lvl = atoi(level);
+	if (level = GetStringTableOption(g, topt, "Depth", level)) {
+		lvl = atoi(level);
     lvl = (lvl > 16) ? 16 : lvl;
   } else
     lvl = 0;
@@ -739,6 +739,7 @@ PTDB JSONDEF::GetTable(PGLOBAL g, MODE m)
 /***********************************************************************/
 TDBJSN::TDBJSN(PJDEF tdp, PTXF txfp) : TDBDOS(tdp, txfp)
   {
+	G = NULL;
   Top = NULL;
   Row = NULL;
   Val = NULL;

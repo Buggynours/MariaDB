@@ -170,9 +170,9 @@
 #define JSONMAX      10             // JSON Default max grp size
 
 extern "C" {
-       char version[]= "Version 1.07.0001 November 12, 2019";
+       char version[]= "Version 1.07.0002 September 30, 2020";
 #if defined(__WIN__)
-       char compver[]= "Version 1.07.0001 " __DATE__ " "  __TIME__;
+       char compver[]= "Version 1.07.0002 " __DATE__ " "  __TIME__;
        char slash= '\\';
 #else   // !__WIN__
        char slash= '/';
@@ -254,8 +254,8 @@ TYPCONV GetTypeConv(void);
 char   *GetJsonNull(void);
 uint    GetJsonGrpSize(void);
 char   *GetJavaWrapper(void);
-uint    GetWorkSize(void);
-void    SetWorkSize(uint);
+ulong   GetWorkSize(void);
+void    SetWorkSize(ulong);
 extern "C" const char *msglang(void);
 static char *strz(PGLOBAL g, LEX_CSTRING &ls);
 static void PopUser(PCONNECT xp);
@@ -346,10 +346,10 @@ static MYSQL_THDVAR_ENUM(
   &usetemp_typelib);               // typelib
 
 // Size used for g->Sarea_Size
-static MYSQL_THDVAR_UINT(work_size,
+static MYSQL_THDVAR_ULONG(work_size,
        PLUGIN_VAR_RQCMDARG, 
        "Size of the CONNECT work area.",
-       NULL, NULL, SZWORK, SZWMIN, UINT_MAX, 1);
+       NULL, NULL, SZWORK, SZWMIN, ULONG_MAX, 1);
 
 // Size used when converting TEXT columns to VARCHAR
 static MYSQL_THDVAR_INT(conv_size,
@@ -459,8 +459,8 @@ char *GetJsonNull(void)
 	{return connect_hton ? THDVAR(current_thd, json_null) : NULL;}
 uint GetJsonGrpSize(void)
   {return connect_hton ? THDVAR(current_thd, json_grp_size) : 10;}
-uint GetWorkSize(void) {return THDVAR(current_thd, work_size);}
-void SetWorkSize(uint) 
+ulong GetWorkSize(void) {return THDVAR(current_thd, work_size);}
+void SetWorkSize(ulong) 
 {
   // Changing the session variable value seems to be impossible here
   // and should be done in a check function 
@@ -4505,14 +4505,12 @@ bool ha_connect::check_privileges(THD *thd, PTOS options, const char *dbn, bool 
 		case TAB_DIR:
 		case TAB_ZIP:
 		case TAB_OEM:
-      if (table && table->pos_in_table_list) // if SELECT
-      {
+      if (table && table->pos_in_table_list) { // if SELECT
 #if MYSQL_VERSION_ID > 100200
 				Switch_to_definer_security_ctx backup_ctx(thd, table->pos_in_table_list);
 #endif // VERSION_ID > 100200
         return check_global_access(thd, FILE_ACL);
-      }
-      else
+      }	else
         return check_global_access(thd, FILE_ACL);
     case TAB_ODBC:
 		case TAB_JDBC:
@@ -4528,7 +4526,7 @@ bool ha_connect::check_privileges(THD *thd, PTOS options, const char *dbn, bool 
     case TAB_VIR:
 			// This is temporary until a solution is found
 			return false;
-    } // endswitch type
+  } // endswitch type
 
   my_printf_error(ER_UNKNOWN_ERROR, "check_privileges failed", MYF(0));
   return true;
@@ -5324,7 +5322,12 @@ static bool add_field(String *sql, const char *field_name, int typ, int len,
                       int dec, char *key, uint tm, const char *rem, char *dft,
                       char *xtra, char *fmt, int flag, bool dbf, char v)
 {
-  char var= (len > 255) ? 'V' : v;
+#if defined(DEVELOPMENT)
+	// Some client programs regard CHAR(36) as GUID
+	char var = (len > 255 || len == 36) ? 'V' : v;
+#else
+	char var= (len > 255) ? 'V' : v;
+#endif
   bool q, error= false;
   const char *type= PLGtoMYSQLtype(typ, dbf, var);
 
@@ -5882,7 +5885,7 @@ static int connect_assisted_discovery(handlerton *, THD* thd,
 
 			} else switch (ttp) {
 				case TAB_DBF:
-					qrp= DBFColumns(g, dpath, fn, fnc == FNC_COL);
+					qrp= DBFColumns(g, dpath, fn, topt, fnc == FNC_COL);
 					break;
 #if defined(ODBC_SUPPORT)
 				case TAB_ODBC:
@@ -6734,11 +6737,6 @@ int ha_connect::create(const char *name, TABLE *table_arg,
 			PCSZ m= GetListOption(g, "Mulentries", options->oplist, "NO");
 			bool mul= *m == '1' || *m == 'Y' || *m == 'y' || !stricmp(m, "ON");
 
-			if (!entry && !mul) {
-				my_message(ER_UNKNOWN_ERROR, "Missing entry name", MYF(0));
-				DBUG_RETURN(HA_ERR_INTERNAL_ERROR);
-			}	// endif entry
-
 			strcat(strcat(strcpy(dbpath, "./"), table->s->db.str), "/");
 			PlugSetPath(zbuf, options->filename, dbpath);
 			PlugSetPath(buf, fn, dbpath);
@@ -7380,7 +7378,7 @@ maria_declare_plugin(connect)
   0x0107,                                       /* version number (1.07) */
   NULL,                                         /* status variables */
   connect_system_variables,                     /* system variables */
-  "1.07.0001",                                  /* string version */
+  "1.07.0002",                                  /* string version */
 	MariaDB_PLUGIN_MATURITY_STABLE                /* maturity */
 }
 maria_declare_plugin_end;

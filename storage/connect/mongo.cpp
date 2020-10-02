@@ -251,7 +251,7 @@ int MGODISC::GetColumns(PGLOBAL g, PCSZ db, PCSZ uri, PTOS topt)
 	PCSZ    level = GetStringTableOption(g, topt, "Level", NULL);
 	PMGODEF tdp;
 
-	if (level) {
+	if (level = GetStringTableOption(g, topt, "Depth", level)) {
 		lvl = atoi(level);
 		lvl = (lvl > 16) ? 16 : lvl;
 	} else
@@ -380,7 +380,6 @@ MGODEF::MGODEF(void)
 	Uri = NULL;
 	Colist = NULL;
 	Filter = NULL;
-	Level = 0;
 	Base = 0;
 	Version = 0;
 	Pipe = false;
